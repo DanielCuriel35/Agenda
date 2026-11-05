@@ -1,0 +1,8 @@
+{
+  "name": "agenda-familiar",
+  "private": true,
+  "description": "Agenda familiar (web estática + función de Vercel que lee fotos con IA)",
+  "engines": {
+    "node": ">=18"
+  }
+}

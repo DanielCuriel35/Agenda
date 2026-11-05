@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="circ"><circle cx="512" cy="512" r="490"/></clipPath>
+  </defs>
+  <circle cx="512" cy="512" r="490" fill="#F6F5F2"/>
+  <g clip-path="url(#circ)">
+    <ellipse cx="520" cy="862" rx="270" ry="26" fill="#000" opacity=".10"/>
+    <g transform="rotate(-5 512 520)">
+      <!-- tapa -->
+      <rect x="262" y="196" width="520" height="640" rx="46" fill="#3C3C3C" stroke="#111" stroke-width="18"/>
+      <!-- hojas -->
+      <rect x="306" y="222" width="452" height="588" rx="26" fill="#FFFFFF" stroke="#111" stroke-width="14"/>
+      <!-- cabecera del mes -->
+      <path d="M306 300 V248 a26 26 0 0 1 26 -26 H732 a26 26 0 0 1 26 26 V300 Z" fill="#1E1E1E"/>
+      <path d="M306 300 H758" stroke="#111" stroke-width="12"/>
+      <circle cx="380" cy="261" r="9" fill="#F6F5F2"/>
+      <circle cx="410" cy="261" r="9" fill="#9A9A9A"/>
+      <!-- cuadrícula del calendario -->
+      <g stroke="#D4D4D4" stroke-width="7" stroke-linecap="round">
+        <path d="M352 640 H716 M352 700 H716 M352 760 H716"/>
+        <path d="M412 600 V780 M472 600 V780 M532 600 V780 M592 600 V780 M652 600 V780"/>
+      </g>
+      <rect x="474" y="642" width="56" height="56" rx="12" fill="#2A2A2A"/>
+      <!-- anillas -->
+      <g fill="#C9C9C9" stroke="#111" stroke-width="10">
+        <rect x="270" y="340" width="76" height="30" rx="15"/>
+        <rect x="270" y="430" width="76" height="30" rx="15"/>
+        <rect x="270" y="520" width="76" height="30" rx="15"/>
+        <rect x="270" y="610" width="76" height="30" rx="15"/>
+        <rect x="270" y="700" width="76" height="30" rx="15"/>
+      </g>
+      <!-- cinta marcapáginas -->
+      <path d="M690 806 V900 l26 -22 26 22 V806 Z" fill="#8E8E8E" stroke="#111" stroke-width="12" stroke-linejoin="round"/>
+    </g>
+    <!-- letras -->
+    <g font-family="Inter Display" font-weight="900" font-size="300" letter-spacing="-12" stroke-linejoin="round" paint-order="stroke">
+      <text x="372" y="560" fill="none" stroke="#FFFFFF" stroke-width="56">D</text>
+      <text x="566" y="588" fill="none" stroke="#FFFFFF" stroke-width="56" transform="rotate(6 650 500)">M</text>
+      <text x="372" y="560" fill="#1C1C1C" stroke="#111" stroke-width="18">D</text>
+      <text x="566" y="588" fill="#9C9C9C" stroke="#111" stroke-width="18" transform="rotate(6 650 500)">M</text>
+    </g>
+  </g>
+  <circle cx="512" cy="512" r="490" fill="none" stroke="#1C1C1C" stroke-width="30"/>
+</svg>

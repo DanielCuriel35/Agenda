@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F3F2EF">
+<title>Agenda familiar</title>
+
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="manifest" href="./manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Agenda">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,500..700,100&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<!-- ¿Quién eres? -->
+<div id="login" class="login hidden" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <div class="login-box">
+        <img src="./icon-192.png" alt="Agenda familiar" class="logo logo-lg">
+        <h2 id="loginTitle">¿Quién eres?</h2>
+        <p class="login-sub">Así sabremos quién apunta cada cosa.</p>
+        <div id="userButtons" class="user-grid"></div>
+    </div>
+</div>
+
+<!-- Confirmación -->
+<div id="confirm" class="backdrop hidden">
+    <div class="sheet sheet-small" role="dialog" aria-modal="true" aria-labelledby="confirmText">
+        <p id="confirmText"></p>
+        <div class="sheet-actions">
+            <button id="confirmNo" class="btn btn-ghost">Cancelar</button>
+            <button id="confirmYes" class="btn btn-dark">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Añadir / editar cita -->
+<div id="editor" class="backdrop hidden">
+    <form id="form" class="sheet" role="dialog" aria-modal="true" aria-labelledby="formTitle" autocomplete="off">
+        <div class="sheet-grip" aria-hidden="true"></div>
+
+        <div id="fotoInfo" class="foto-info hidden">
+            <img id="fotoThumb" alt="Foto de la nota">
+            <div>
+                <strong>Leído de la foto</strong>
+                <span id="fotoCuenta"></span>
+            </div>
+        </div>
+
+        <h2 id="formTitle" class="sheet-title">Nueva cita</h2>
+
+        <label class="field">
+            <span>Qué</span>
+            <input id="fTitulo" required maxlength="120" placeholder="Dentista, cumple de la abuela…" autocapitalize="sentences" enterkeyhint="next">
+        </label>
+
+        <div class="field-row">
+            <label class="field">
+                <span>Día</span>
+                <input id="fFecha" type="date" required>
+            </label>
+            <label class="field">
+                <span>Hora <em>(opcional)</em></span>
+                <input id="fHora" type="time">
+            </label>
+        </div>
+
+        <fieldset class="field">
+            <legend>Para quién</legend>
+            <div id="fPersonas" class="person-picker"></div>
+            <p id="fPersonasHint" class="hint">Sin marcar a nadie, es de toda la familia.</p>
+        </fieldset>
+
+        <label class="field">
+            <span>Notas <em>(opcional)</em></span>
+            <textarea id="fNotas" rows="2" maxlength="500" placeholder="Dirección, qué llevar…"></textarea>
+        </label>
+
+        <div class="sheet-actions">
+            <button type="button" id="btnCancelar" class="btn btn-ghost">Cancelar</button>
+            <button type="submit" id="btnGuardar" class="btn btn-dark">Guardar</button>
+        </div>
+        <button type="button" id="btnBorrar" class="link-borrar hidden">Eliminar esta cita</button>
+    </form>
+</div>
+
+<!-- Leyendo la foto -->
+<div id="leyendo" class="backdrop backdrop-center hidden" role="status" aria-live="polite">
+    <div class="leyendo">
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Leyendo la nota…</p>
+    </div>
+</div>
+
+<input id="foto" type="file" accept="image/*" class="hidden">
+
+<div class="app">
+
+    <header class="header">
+        <img src="./icon-192.png" alt="Agenda familiar" class="logo">
+        <div class="header-text">
+            <h1>Agenda</h1>
+            <p id="summary" class="summary">&nbsp;</p>
+        </div>
+        <button id="btnChangeUser" class="user-chip" title="Cambiar usuario">
+            <span id="chipAvatar" class="avatar"></span>
+            <span id="chipName"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+    </header>
+
+    <label class="search">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="txtBuscar" type="search" placeholder="Buscar: dentista, médico…" enterkeyhint="search" aria-label="Buscar en la agenda">
+        <button id="btnLimpiar" type="button" class="search-clear hidden" aria-label="Borrar búsqueda">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+    </label>
+
+    <div id="filters" class="filters" role="group" aria-label="Filtrar por persona"></div>
+
+    <!-- Resultados de búsqueda -->
+    <div id="viewBuscar" class="hidden">
+        <p id="buscarInfo" class="buscar-info"></p>
+        <div id="buscarLista"></div>
+    </div>
+
+    <div id="viewNormal">
+
+        <nav class="tabs" role="tablist">
+            <button class="tab active" data-tab="calendario" role="tab" aria-selected="true">Calendario</button>
+            <button class="tab" data-tab="todas" role="tab" aria-selected="false">Todas</button>
+        </nav>
+
+        <!-- Calendario -->
+        <div id="viewCalendario">
+            <section class="cal">
+                <div class="cal-head">
+                    <button id="mesAnterior" class="cal-nav" aria-label="Mes anterior">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <button id="mesTitulo" class="cal-title" title="Volver a hoy"></button>
+                    <button id="mesSiguiente" class="cal-nav" aria-label="Mes siguiente">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                </div>
+                <div class="cal-week" aria-hidden="true">
+                    <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+                </div>
+                <div id="calDias" class="cal-days"></div>
+            </section>
+
+            <h3 id="diaTitulo" class="day-title"></h3>
+            <ul id="diaLista" class="events"></ul>
+            <div id="diaVacio" class="empty hidden">
+                <p>Nada apuntado este día.</p>
+                <button id="btnAnadirDia" class="btn-soft">Añadir algo</button>
+            </div>
+        </div>
+
+        <!-- Todas -->
+        <div id="viewTodas" class="hidden">
+            <div id="todasLista"></div>
+            <div id="todasVacio" class="empty hidden">
+                <p>No hay nada pendiente. Apunta la próxima cita con el <strong>+</strong> o hazle una foto.</p>
+            </div>
+            <button id="btnPasadas" class="btn-pasadas">Ver también las pasadas</button>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Botones flotantes -->
+<div class="fabs">
+    <button id="btnFoto" class="fab fab-light" aria-label="Añadir desde una foto">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.6l1.4-2h5l1.4 2h1.6A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
+    </button>
+    <button id="btnNueva" class="fab" aria-label="Nueva cita">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+</div>
+
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="supabase.js"></script>
+
+<script src="app.js"></script>
+
+</body>
+</html>
