@@ -14,7 +14,14 @@
 const USUARIOS = ["Daniel", "Diego", "Macu", "Marina"];
 const TIPOS = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-const MODELO = process.env.GEMINI_MODEL || "gemini-flash-latest";
+// Se prueban en orden: si uno no existe o no está en el nivel gratis, pasa al siguiente.
+const MODELOS = [
+    process.env.GEMINI_MODEL,
+    "gemini-flash-latest",
+    "gemini-2.5-flash",
+    "gemini-flash-lite-latest",
+    "gemini-2.5-flash-lite"
+].filter((m, i, a) => m && a.indexOf(m) === i);
 
 // Forma que debe tener la respuesta de la IA (JSON)
 const ESQUEMA = {
@@ -87,6 +94,34 @@ function limpiar(ev) {
     return { titulo, fecha, hora, personas, notas };
 }
 
+function leerJson(texto) {
+    const limpio = String(texto || "").replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+    try { return JSON.parse(limpio); } catch (e) { }
+    const m = limpio.match(/\{[\s\S]*\}/);
+    if (m) { try { return JSON.parse(m[0]); } catch (e) { } }
+    return null;
+}
+
+function llamarGemini(clave, modelo, hoy, partes, conEsquema) {
+    const generationConfig = { temperature: 0, responseMimeType: "application/json" };
+    if (conEsquema) generationConfig.responseSchema = ESQUEMA;
+
+    const sistema = instrucciones(hoy) + (conEsquema ? "" : `
+
+Formato de respuesta (solo JSON, nada más):
+{"eventos":[{"titulo":"Médico","fecha":"AAAA-MM-DD","hora":"HH:MM o null","personas":["Daniel"],"notas":null}]}`);
+
+    return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`, {
+        method: "POST",
+        headers: { "x-goog-api-key": clave, "content-type": "application/json" },
+        body: JSON.stringify({
+            systemInstruction: { parts: [{ text: sistema }] },
+            contents: [{ role: "user", parts: partes }],
+            generationConfig
+        })
+    });
+}
+
 module.exports = async (req, res) => {
     if (req.method !== "POST") {
         res.setHeader("Allow", "POST");
@@ -110,47 +145,49 @@ module.exports = async (req, res) => {
 
     const fechaHoy = /^\d{4}-\d{2}-\d{2}$/.test(hoy || "") ? hoy : new Date().toISOString().slice(0, 10);
 
+    const partes = [
+        { inline_data: { mime_type: tipo, data: imagen } },
+        { text: "Saca las citas de esta foto." }
+    ];
+
+    let ultimoError = "";
+
     try {
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODELO)}:generateContent`, {
-            method: "POST",
-            headers: {
-                "x-goog-api-key": clave,
-                "content-type": "application/json"
-            },
-            body: JSON.stringify({
-                systemInstruction: { parts: [{ text: instrucciones(fechaHoy) }] },
-                contents: [{
-                    role: "user",
-                    parts: [
-                        { inline_data: { mime_type: tipo, data: imagen } },
-                        { text: "Saca las citas de esta foto." }
-                    ]
-                }],
-                generationConfig: {
-                    temperature: 0,
-                    responseMimeType: "application/json",
-                    responseSchema: ESQUEMA
+        for (const modelo of MODELOS) {
+            // Primero con el esquema; si Gemini lo rechaza (400), sin él
+            for (const conEsquema of [true, false]) {
+                const r = await llamarGemini(clave, modelo, fechaHoy, partes, conEsquema);
+                const datos = await r.json().catch(() => ({}));
+
+                if (r.ok) {
+                    const texto = (datos.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+                    const json = leerJson(texto);
+                    if (!json) {
+                        console.error(modelo, "JSON no válido", texto.slice(0, 500));
+                        ultimoError = "La IA ha respondido algo raro";
+                        break;
+                    }
+                    const eventos = (json.eventos || []).map(limpiar).filter(Boolean).slice(0, 20);
+                    return res.status(200).json({ eventos, modelo });
                 }
-            })
-        });
 
-        const datos = await r.json().catch(() => ({}));
+                const detalle = datos.error?.message || `HTTP ${r.status}`;
+                console.error("Gemini", modelo, conEsquema ? "con esquema" : "sin esquema", r.status, detalle);
 
-        if (!r.ok) {
-            console.error("Gemini", r.status, JSON.stringify(datos));
-            const msg = r.status === 429
-                ? "Se ha acabado el cupo gratis de hoy. Prueba mañana."
-                : "La IA no ha podido leer la foto. Prueba otra vez.";
-            return res.status(502).json({ error: msg });
+                if (r.status === 400 && /api key|API_KEY/i.test(detalle))
+                    return res.status(502).json({ error: "La clave GEMINI_API_KEY no es válida. Revísala en Vercel." });
+                if (r.status === 403)
+                    return res.status(502).json({ error: `Google no deja usar la clave: ${detalle.slice(0, 160)}` });
+
+                ultimoError = r.status === 429
+                    ? "Se ha acabado el cupo gratis por ahora. Prueba más tarde."
+                    : `${modelo}: ${detalle.slice(0, 160)}`;
+
+                if (r.status !== 400) break;   // 404/429/500 → siguiente modelo
+            }
         }
 
-        const texto = (datos.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-        let json = {};
-        try { json = JSON.parse(texto); } catch (e) { console.error("JSON no válido", texto); }
-
-        const eventos = (json.eventos || []).map(limpiar).filter(Boolean).slice(0, 20);
-
-        return res.status(200).json({ eventos });
+        return res.status(502).json({ error: `La IA no ha podido leer la foto (${ultimoError})` });
 
     } catch (e) {
         console.error(e);

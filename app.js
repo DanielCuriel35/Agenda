@@ -780,7 +780,7 @@ inputFoto.addEventListener("change", async () => {
 
     } catch (e) {
         console.error(e);
-        avisar(e.message || "No se pudo leer la foto", 3500);
+        avisar(e.message || "No se pudo leer la foto", 7000);
     } finally {
         leyendo.classList.add("hidden");
     }

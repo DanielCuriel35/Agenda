@@ -49,7 +49,8 @@ Variables de entorno en Vercel (Project → Settings → Environment Variables):
 
 GEMINI_API_KEY   clave GRATIS de Google AI Studio:
                  https://aistudio.google.com/apikey → "Create API key"
-GEMINI_MODEL     opcional. Por defecto gemini-flash-latest
+GEMINI_MODEL     opcional. Si no se pone, prueba gemini-flash-latest,
+                 gemini-2.5-flash y las versiones lite, por ese orden
                  (el último modelo Flash, que entra en el nivel gratuito).
 
 Después de añadir o cambiar variables hay que volver a desplegar.
