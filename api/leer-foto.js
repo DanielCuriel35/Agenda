@@ -2,48 +2,44 @@
 //
 //   { usuario, hoy: "2026-11-05", imagen: "<base64>", tipo: "image/jpeg" }
 //
-// Manda la foto a Claude (la IA de Anthropic) y devuelve las citas que
+// Manda la foto a Gemini (la IA de Google, con nivel gratuito) y devuelve las citas que
 // encuentre escritas, listas para revisar en la app:
 //
 //   { eventos: [{ titulo, fecha, hora, personas, notas }] }
 //
 // Variables de entorno en Vercel:
-//   ANTHROPIC_API_KEY   clave de https://console.anthropic.com (obligatoria)
-//   ANTHROPIC_MODEL     opcional; por defecto claude-sonnet-5-5
+//   GEMINI_API_KEY   clave gratis de https://aistudio.google.com/apikey (obligatoria)
+//   GEMINI_MODEL     opcional; por defecto gemini-flash-latest
 
 const USUARIOS = ["Daniel", "Diego", "Macu", "Marina"];
 const TIPOS = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-const MODELO = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
+const MODELO = process.env.GEMINI_MODEL || "gemini-flash-latest";
 
-// La IA rellena esta "herramienta": así siempre devuelve datos ordenados.
-const HERRAMIENTA = {
-    name: "guardar_citas",
-    description: "Guarda las citas o eventos encontrados en la imagen.",
-    input_schema: {
-        type: "object",
-        properties: {
-            eventos: {
-                type: "array",
-                items: {
-                    type: "object",
-                    properties: {
-                        titulo: { type: "string", description: "Qué es, corto y con mayúscula inicial. Ej.: «Médico», «Dentista», «Cumple de la abuela». Sin la persona ni la fecha." },
-                        fecha: { type: "string", description: "Fecha en formato AAAA-MM-DD." },
-                        hora: { type: ["string", "null"], description: "Hora en formato HH:MM (24 h) o null si no pone hora." },
-                        personas: {
-                            type: "array",
-                            items: { type: "string", enum: USUARIOS },
-                            description: "Para quién es. Vacío si no se dice o si es para toda la familia."
-                        },
-                        notas: { type: ["string", "null"], description: "Otros detalles escritos (lugar, qué llevar…) o null." }
+// Forma que debe tener la respuesta de la IA (JSON)
+const ESQUEMA = {
+    type: "OBJECT",
+    properties: {
+        eventos: {
+            type: "ARRAY",
+            items: {
+                type: "OBJECT",
+                properties: {
+                    titulo: { type: "STRING", description: "Qué es, corto y con mayúscula inicial. Ej.: «Médico», «Dentista», «Cumple de la abuela». Sin la persona ni la fecha." },
+                    fecha: { type: "STRING", description: "Fecha en formato AAAA-MM-DD." },
+                    hora: { type: "STRING", nullable: true, description: "Hora en formato HH:MM (24 h) o null si no pone hora." },
+                    personas: {
+                        type: "ARRAY",
+                        items: { type: "STRING", enum: USUARIOS },
+                        description: "Para quién es. Vacío si no se dice o si es para toda la familia."
                     },
-                    required: ["titulo", "fecha", "hora", "personas", "notas"]
-                }
+                    notas: { type: "STRING", nullable: true, description: "Otros detalles escritos (lugar, qué llevar…) o null." }
+                },
+                required: ["titulo", "fecha", "personas"]
             }
-        },
-        required: ["eventos"]
-    }
+        }
+    },
+    required: ["eventos"]
 };
 
 function instrucciones(hoy) {
@@ -64,7 +60,7 @@ Reglas:
 - Si algo no se lee bien, haz tu mejor interpretación; la familia lo revisará antes de guardarlo.
 - Si en la foto no hay ninguna cita con fecha, devuelve la lista vacía.
 
-Responde solo llamando a la herramienta guardar_citas.`;
+Responde solo con el JSON pedido.`;
 }
 
 function leerCuerpo(req) {
@@ -97,9 +93,9 @@ module.exports = async (req, res) => {
         return res.status(405).json({ error: "Método no permitido" });
     }
 
-    const clave = process.env.ANTHROPIC_API_KEY;
+    const clave = process.env.GEMINI_API_KEY;
     if (!clave)
-        return res.status(500).json({ error: "Falta ANTHROPIC_API_KEY en Vercel" });
+        return res.status(500).json({ error: "Falta GEMINI_API_KEY en Vercel" });
 
     const { usuario, hoy, imagen, tipo = "image/jpeg" } = leerCuerpo(req);
 
@@ -115,38 +111,44 @@ module.exports = async (req, res) => {
     const fechaHoy = /^\d{4}-\d{2}-\d{2}$/.test(hoy || "") ? hoy : new Date().toISOString().slice(0, 10);
 
     try {
-        const r = await fetch("https://api.anthropic.com/v1/messages", {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODELO)}:generateContent`, {
             method: "POST",
             headers: {
-                "x-api-key": clave,
-                "anthropic-version": "2023-06-01",
+                "x-goog-api-key": clave,
                 "content-type": "application/json"
             },
             body: JSON.stringify({
-                model: MODELO,
-                max_tokens: 1500,
-                system: instrucciones(fechaHoy),
-                tools: [HERRAMIENTA],
-                tool_choice: { type: "tool", name: HERRAMIENTA.name },
-                messages: [{
+                systemInstruction: { parts: [{ text: instrucciones(fechaHoy) }] },
+                contents: [{
                     role: "user",
-                    content: [
-                        { type: "image", source: { type: "base64", media_type: tipo, data: imagen } },
-                        { type: "text", text: "Saca las citas de esta foto." }
+                    parts: [
+                        { inline_data: { mime_type: tipo, data: imagen } },
+                        { text: "Saca las citas de esta foto." }
                     ]
-                }]
+                }],
+                generationConfig: {
+                    temperature: 0,
+                    responseMimeType: "application/json",
+                    responseSchema: ESQUEMA
+                }
             })
         });
 
         const datos = await r.json().catch(() => ({}));
 
         if (!r.ok) {
-            console.error("Anthropic", r.status, JSON.stringify(datos));
-            return res.status(502).json({ error: "La IA no ha podido leer la foto. Prueba otra vez." });
+            console.error("Gemini", r.status, JSON.stringify(datos));
+            const msg = r.status === 429
+                ? "Se ha acabado el cupo gratis de hoy. Prueba mañana."
+                : "La IA no ha podido leer la foto. Prueba otra vez.";
+            return res.status(502).json({ error: msg });
         }
 
-        const llamada = (datos.content || []).find(b => b.type === "tool_use");
-        const eventos = (llamada?.input?.eventos || []).map(limpiar).filter(Boolean).slice(0, 20);
+        const texto = (datos.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+        let json = {};
+        try { json = JSON.parse(texto); } catch (e) { console.error("JSON no válido", texto); }
+
+        const eventos = (json.eventos || []).map(limpiar).filter(Boolean).slice(0, 20);
 
         return res.status(200).json({ eventos });
 

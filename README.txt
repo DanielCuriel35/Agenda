@@ -47,15 +47,16 @@ alter publication supabase_realtime add table eventos;
 
 Variables de entorno en Vercel (Project → Settings → Environment Variables):
 
-ANTHROPIC_API_KEY   clave de https://console.anthropic.com → API Keys
-ANTHROPIC_MODEL     opcional. Por defecto claude-sonnet-5-5.
-                    Con claude-haiku-5-5 sale más barato.
+GEMINI_API_KEY   clave GRATIS de Google AI Studio:
+                 https://aistudio.google.com/apikey → "Create API key"
+GEMINI_MODEL     opcional. Por defecto gemini-flash-latest
+                 (el último modelo Flash, que entra en el nivel gratuito).
 
 Después de añadir o cambiar variables hay que volver a desplegar.
 
 Cómo funciona: el botón de la cámara deja hacer una foto o elegir una de la
 galería (también capturas de WhatsApp). La foto se reduce en el móvil, la
-función api/leer-foto.js se la pasa a la IA con la fecha de hoy, y la IA
+función api/leer-foto.js se la pasa a Gemini con la fecha de hoy, y la IA
 devuelve las citas que encuentre (fecha, hora, para quién y qué). Cada una se
 abre en el formulario para revisarla antes de guardar. Si hay varias, se
 revisan una detrás de otra ("Saltar" pasa a la siguiente).
@@ -64,8 +65,10 @@ Ejemplo: "9 de septiembre 14.50 médico Dani" → Médico · 9 sept · 14:50 · 
 (sin año, coge la próxima vez que llegue esa fecha).
 
 Ojo: igual que la lista, la web no tiene contraseña. Quien tenga el enlace
-puede usar la cámara y gastar un poco de saldo de la API. Para una familia no
-suele ser problema; si quieres, se le puede poner una clave.
+puede usar la cámara y gastar parte del cupo gratis diario de Gemini. Para
+una familia no suele ser problema; si quieres, se le puede poner una clave.
+En el nivel gratis, Google puede usar las fotos enviadas para mejorar sus
+modelos: no mandes nada delicado.
 
 
 4. En el móvil
