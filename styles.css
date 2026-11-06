@@ -1062,6 +1062,33 @@ button {
     transform: scale(.96)
 }
 
+/* ---------- Muñecos de la familia ---------- */
+
+.avatar.muneco {
+    overflow: hidden;
+    background: var(--soft);
+    box-shadow: 0 0 0 1.5px var(--c);
+}
+
+.avatar.muneco svg,
+.figura svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.figura {
+    display: block;
+    width: 62px;
+    height: 89px;
+    transition: transform .2s;
+}
+
+.user-card:hover .figura,
+.user-card.active .figura {
+    transform: translateY(-3px) rotate(-3deg);
+}
+
 @keyframes aparecer {
     from {
         opacity: 0

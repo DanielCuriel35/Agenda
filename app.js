@@ -90,7 +90,15 @@ function plural(n, uno, varios) {
 function avatar(nombre) {
     const u = USUARIOS[nombre];
     if (!u) return "";
+    const p = personaje(nombre);
+    if (p) return `<span class="avatar muneco" style="--c:${u.tono}">${retrato(p)}</span>`;
     return `<span class="avatar" style="--c:${u.tono};--t:${u.texto || "#fff"}">${u.ini}</span>`;
+}
+
+// El muñeco entero (para elegir usuario)
+function figura(nombre) {
+    const p = personaje(nombre);
+    return p ? `<span class="figura">${dibujo(p, { piernaA: 0, piernaB: 0 })}</span>` : avatar(nombre);
 }
 
 function etiquetasPersonas(personas) {
@@ -133,7 +141,10 @@ function elegirUsuario(nombre) {
     try { localStorage.setItem("usuario", nombre); } catch (e) { }
     login.classList.add("hidden");
     const u = USUARIOS[nombre];
-    chipAvatar.textContent = u.ini;
+    const p = personaje(nombre);
+    chipAvatar.classList.toggle("muneco", !!p);
+    if (p) chipAvatar.innerHTML = retrato(p);
+    else chipAvatar.textContent = u.ini;
     chipAvatar.style.setProperty("--c", u.tono);
     chipAvatar.style.setProperty("--t", u.texto || "#fff");
     chipName.textContent = nombre;
@@ -143,7 +154,7 @@ NOMBRES.forEach(nombre => {
     const b = document.createElement("button");
     b.className = "user-card";
     b.dataset.nombre = nombre;
-    b.innerHTML = `${avatar(nombre)}${nombre}`;
+    b.innerHTML = `${figura(nombre)}${nombre}`;
     b.addEventListener("click", () => elegirUsuario(nombre));
     userButtons.appendChild(b);
 });
